@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include "main.c"
 
-
 #ifdef SINGLE_LINKED_LIST_INFO_TYPE
 #ifdef DOUBLE_LINKED_LIST_INFO_TYPE
 
