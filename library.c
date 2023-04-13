@@ -69,6 +69,7 @@ slhead_t *sl_head_init() {
     }
     return head;
 }
+
 slist_t *slist_append(slhead_t *head, SINGLE_LINKED_LIST_INFO_TYPE *info) {
     slist_t *node = NULL;
     if ((node = (slist_t *) malloc(sizeof(slist_t))) != NULL) {

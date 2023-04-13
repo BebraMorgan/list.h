@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "stdlib.h"
 
+
 typedef struct cars {
     char *name;
     char *company;
