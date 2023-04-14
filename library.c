@@ -1,68 +1,18 @@
 #include "library.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-
-#ifdef SINGLE_LINKED_LIST_INFO_TYPE
-#ifdef DOUBLE_LINKED_LIST_INFO_TYPE
-
-int search_max_id(void *head, links) {
-    dlhead_t *dlhead = NULL;
-    slhead_t *slhead = NULL;
-    dlist_t *dlist = NULL;
-    slist_t *slist = NULL;
+int search_max_id(head_t *head) {
+    node_t *list = NULL;
     int max = 0;
-    if (links == 1) {
-        slhead = (slhead_t *) head;
-        slist = slhead->first;
-        for (slist = slhead->first; slist != NULL; slist = slist->next) {
-            if (slist->id > max) max = slist->id;
-        }
-    } else if (links == 2) {
-        dlhead = (dlhead_t *) head;
-        dlist = dlhead->first;
-        for (dlist = dlhead->first; dlist != NULL; dlist = dlist->next) {
-            if (dlist->id > max) max = dlist->id;
-        }
+    list = head->first;
+    for (list = head->first; list != NULL; list = list->next) {
+        if (list->id > max) max = list->id;
     }
     return max;
 }
 
-void list_clear(void *head, int links) {
-    dlhead_t *dlhead = NULL;
-    slhead_t *slhead = NULL;
-    dlist_t *dnode1 = NULL;
-    dlist_t *dnode2 = NULL;
-    slist_t *snode1 = NULL;
-    slist_t *snode2 = NULL;
-    if (links == 1) {
-        slhead = (slhead_t *) head;
-        snode1 = slhead->first;
-        while (snode1 != NULL) {
-            snode2 = snode1;
-            snode1 = snode1->next;
-            free(snode2);
-        }
-    } else if (links == 2) {
-        dlhead = (dlhead_t *) head;
-        dnode1 = dlhead->first;
-        while (dnode1 != NULL) {
-            dnode2 = dnode1;
-            dnode1 = dnode1->next;
-            free(dnode2);
-        }
-    }
-}
-
-#endif
-#endif
-
-#ifdef SINGLE_LINKED_LIST_INFO_TYPE
-
-
-slhead_t *sl_head_init() {
-    slhead_t *head = NULL;
-    if ((head = (slhead_t *) malloc(sizeof(slhead_t))) != NULL) {
+head_t *head_init() {
+    head_t *head = NULL;
+    if ((head = (head_t*)malloc(sizeof(head_t))) != NULL) {
         head->length = 0;
         head->first = NULL;
         head->last = NULL;
@@ -70,30 +20,31 @@ slhead_t *sl_head_init() {
     return head;
 }
 
-
-slist_t *slist_append(slhead_t *head, SINGLE_LINKED_LIST_INFO_TYPE *info) {
-    slist_t *node = NULL;
-    if ((node = (slist_t *) malloc(sizeof(slist_t))) != NULL) {
-        node->info = info;
+node_t *list_append(head_t *head, void *data, void (*free)(void*)) {
+    node_t *node = NULL;
+    if ((node = (node_t*)malloc(sizeof(node_t))) != NULL) {
+        node->data = data;
         node->next = NULL;
         if (head->length == 0) {
             head->first = node;
             head->last = node;
             head->length++;
             node->id = 1;
+            node->prev = NULL;
         } else {
+            node->prev = head->last;
             head->last->next = node;
             head->last = node;
             head->length++;
-            node->id = search_max_id(head, 1) + 1;
+            node->id = search_max_id(head) + 1;
         }
     }
     return node;
 }
 
-slist_t *slist_get(slhead_t *head, int num) {
-    slist_t *node = NULL;
-    int i;
+node_t *list_get(head_t *head, size_t num) {
+    node_t *node = NULL;
+    size_t i;
     node = head->first;
     for (i = 0; node != NULL && i < num; i++) {
         node = node->next;
@@ -101,38 +52,128 @@ slist_t *slist_get(slhead_t *head, int num) {
     return node;
 }
 
-void sl_element_delete_from_tail(slhead_t *head, int num) {
-    int i;
-    slist_t *node1, *CAR_2;
-    if (head->length != 0) {
-        if (head->length == 1) {
-            free(head->first);
-            head->length = 0;
-            head->first = NULL;
-            head->last = NULL;
-            puts("Deleted last element");
-        } else {
-            node1 = head->first;
-            if (head->length > num) {
-                for (i = 0; i < (head->length - num - 1); i++)
-                    node1 = node1->next;
-                CAR_2 = node1->next->next;
-                free(node1->next);
-                node1->next = CAR_2;
-
-            } else {
-                puts("Not enough elements to delete! deleted first.");
-                node1 = head->first;
-                head->first = node1->next;
-                free(node1);
-            }
-            head->length--;
-        }
-    } else puts("There are no elements to delete!");
+void node_delete(node_t *node) {
+    if (node != NULL) {
+        if (node->free != NULL)
+            node->free(node->data);
+        free(node);
+    }
 }
 
-void swap(slhead_t *head, slist_t **first, slist_t **second) {
-    slist_t *first_prev = NULL, *second_prev = NULL, *temp = NULL, *prev = NULL;
+void list_delete(head_t *head){
+    node_t *node = NULL, *next = NULL;
+    if(head != NULL){
+        for(node = head->first; node != NULL; node = next){
+            next = node->next;
+            node_delete(node);
+        }
+        free(head);
+    }
+}
+
+node_t *list_insert(head_t *head, node_t *node, size_t position) {
+    node_t *next = NULL;
+    size_t i;
+    if (head != NULL && node != NULL) {
+        if (position >= 0) {
+            for (i = 0, next = head->first; next != NULL && i != position; next = next->next)
+                i++;
+            if (next != NULL) {
+                node->prev = next->prev;
+                node->next = next;
+                if (next->prev != NULL)
+                    next->prev->next = node;
+                else
+                    head->first = node;
+                next->prev = node;
+            } else {
+                node->prev = head->last;
+                if (head->last != NULL)
+                    head->last->next = node;
+                else
+                    head->first = node;
+                head->last = node;
+                node->next = NULL;
+            }
+        } else {
+            for (i = -1, next = head->last; next != NULL && i != position; next = next->prev)
+                i--;
+            if (next != NULL) {
+                node->prev = next->prev;
+                node->next = next;
+                if (next->prev != NULL)
+                    next->prev->next = node;
+                else
+                    head->first = node;
+                next->prev = node;
+            } else {
+                node->next = head->first;
+                if (head->first != NULL)
+                    head->first->prev = node;
+                else
+                    head->last = node;
+                head->first = node;
+                node->prev = NULL;
+            }
+        }
+        head->length++;
+    }
+    return node;
+}
+
+node_t *list_pop_tail(head_t *head){
+    node_t *node = NULL;
+    if(head != NULL){
+        node = head->last;
+        if(node->prev != NULL){
+            node->prev->next = node->next;
+        }
+        else{
+            head->first = node->next;
+        }
+        head->last = node->prev;
+        head->length--;
+        node->next = NULL;
+        node->prev = NULL;
+    }
+    return node;
+}
+
+node_t *list_pop_top(head_t *head){
+    node_t *node = NULL;
+    if(head != NULL){
+        node = head->first;
+        head->first = node->next;
+        if (node->next != NULL)
+            node->next->prev = node->prev;
+        else
+            head->last = node->prev;
+        head->length--;
+        node->prev = NULL;
+        node->next = NULL;
+    }
+    return node;
+}
+
+void *list_exclude(head_t *head, node_t *node) {
+    if (head != NULL && node != NULL) {
+        if (node->prev != NULL)
+            node->prev->next = node->next;
+        else
+            head->first = node->next;
+
+        if (node->next != NULL)
+            node->next->prev = node->prev;
+        else
+            head->last = node->prev;
+        head->length--;
+    }
+    node->prev = NULL;
+    node->next = NULL;
+}
+
+void swap(head_t *head, node_t **first, node_t **second) {
+    node_t *first_prev = NULL, *second_prev = NULL, *temp = NULL, *prev = NULL;
     temp = head->first;
     while (temp) {
         if (temp == *first) {
@@ -185,52 +226,3 @@ void swap(slhead_t *head, slist_t **first, slist_t **second) {
     *first = *second;
     *second = temp;
 }
-
-
-#endif
-
-#ifdef DOUBLE_LINKED_LIST_INFO_TYPE
-
-dlhead_t *dl_head_init() {
-    dlhead_t *head = NULL;
-    if ((head = (dlhead_t *) malloc(sizeof(dlhead_t))) != NULL) {
-        head->length = 0;
-        head->first = NULL;
-        head->last = NULL;
-    }
-    return head;
-}
-
-dlist_t *dlist_append(dlhead_t *head, DOUBLE_LINKED_LIST_INFO_TYPE *info) {
-    dlist_t *node = NULL;
-    if ((node = (dlist_t *) malloc(sizeof(dlist_t))) != NULL) {
-        node->info = info;
-        node->next = NULL;
-        if (head->length == 0) {
-            node->prev = NULL;
-            head->first = node;
-            head->last = node;
-            head->length++;
-            node->id = 1;
-        } else {
-            head->last->next = node;
-            node->prev = head->last;
-            head->last = node;
-            head->length++;
-            node->id = search_max_id(head, 2) + 1;
-        }
-    }
-    return node;
-}
-
-dlist_t *dlist_get(dlhead_t *head, int num) {
-    dlist_t *node = NULL;
-    int i;
-    node = head->first;
-    for (i = 0; node != NULL && i < num; i++) {
-        node = node->next;
-    }
-    return node;
-}
-
-#endif

@@ -19,5 +19,6 @@ typedef struct cars {
 
 int main(){
 
+    slhead_t *head;
     return 0;
 }
